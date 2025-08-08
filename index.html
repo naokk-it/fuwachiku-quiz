@@ -19,7 +19,7 @@
         /* ボタンが押せるときのスタイル */
         .choice-btn:not(:disabled) {
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
         }
         /* ボタンにマウスが乗ったときのスタイル */
         .choice-btn:not(:disabled):hover {
@@ -28,12 +28,17 @@
         }
         /* 正解・不正解のアニメーション */
         @keyframes result-animation {
-            0% { transform: scale(0.5); opacity: 0; }
-            70% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+            70% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
         .result-anim {
-            animation: result-animation 0.5s ease-out forwards;
+            animation: result-animation 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        /* 選択されたボタンのスタイル */
+        .selected-btn {
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px rgba(251, 191, 36, 1), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
     </style>
 </head>
@@ -45,7 +50,7 @@
         <!-- ヘッダー部分 -->
         <header class="mb-6">
             <h1 class="text-3xl md:text-4xl font-extrabold text-sky-600">ふわふわ？チクチク？ことばクイズ</h1>
-            <p id="progress-text" class="text-gray-500 mt-2 text-lg">もんんだい 1 / 10</p>
+            <p id="progress-text" class="text-gray-500 mt-2 text-lg"></p>
         </header>
 
         <!-- 問題文を表示するエリア -->
@@ -64,9 +69,9 @@
         </div>
 
         <!-- 結果表示エリア -->
-        <div id="result-area" class="min-h-[80px] flex items-center justify-center">
-            <p id="result-message" class="text-5xl font-bold"></p>
-            <p id="result-explanation" class="text-gray-600 mt-2"></p>
+        <div id="result-area" class="min-h-[120px] flex flex-col items-center justify-center">
+            <p id="result-message" class="text-7xl font-extrabold" style="text-shadow: 3px 3px 0px rgba(0,0,0,0.1);"></p>
+            <p id="result-explanation" class="text-gray-600 mt-3 text-lg px-4"></p>
         </div>
 
         <!-- 次へ進む/もう一度ボタン -->
@@ -91,34 +96,60 @@
         const progressText = document.getElementById('progress-text');
         const quizContainer = document.getElementById('quiz-container');
 
-        // クイズの問題と答えのリスト
-        // 新しい問題を追加したいときは、このリストに足していくだけでOK！
+        // クイズの問題と答えのリスト（30問）
         const quizzes = [
+            // ふわふわ言葉
             { question: "ころんでしまった友だちに「だいじょうぶ？」", answer: "fuwafuwa", explanation: "心配する気持ちが伝わる、やさしい言葉だね。" },
             { question: "絵をじょうずに描けたね！とほめる", answer: "fuwafuwa", explanation: "ほめられると、うれしい気持ちになるね！" },
             { question: "「ありがとう」と感謝をつたえる", answer: "fuwafuwa", explanation: "感謝の気持ちは、相手を温かい気持ちにさせるよ。" },
             { question: "「いっしょにあそぼう！」とさそう", answer: "fuwafuwa", explanation: "仲間に入れてもらえると、楽しい気持ちになるね。" },
+            { question: "「ごめんね」ときちんとあやまる", answer: "fuwafuwa", explanation: "あやまるのは勇気がいるけど、相手を思う大切な言葉だよ。" },
+            { question: "困っている友だちに「てつだうよ」", answer: "fuwafuwa", explanation: "助けようとする気持ちは、相手を安心させるね。" },
+            { question: "友だちの新しい服に「すてきだね！」", answer: "fuwafuwa", explanation: "相手のいいところを見つけて伝えると、お互いハッピーになるね。" },
+            { question: "がんばっている友だちに「おうえんしてるよ！」", answer: "fuwafuwa", explanation: "応援は、相手に勇気とパワーをあたえるよ。" },
+            { question: "悲しそうな友だちのそばに、だまっていてあげる", answer: "fuwafuwa", explanation: "言葉がなくても、そばにいるだけで伝わる優しさもあるね。" },
+            { question: "「あなたのそういうところ、好きだよ」と伝える", answer: "fuwafuwa", explanation: "自分のことを認めてもらえると、すごく自信がつくね。" },
+            { question: "「またあしたね！」と笑顔であいさつする", answer: "fuwafuwa", explanation: "次の日も会うのが楽しみになる、明るい言葉だね。" },
+            { question: "むずかしい問題がとけた友だちに「すごい！」", answer: "fuwafuwa", explanation: "相手の頑張りを認める、素敵な言葉だね。" },
+            { question: "「いっしょに帰ろう」と声をかける", answer: "fuwafuwa", explanation: "「あなたのこと、気にかけてるよ」というサインになるね。" },
+            { question: "面白いことを教えてくれた友だちに「おしえてくれて、ありがとう！」", answer: "fuwafuwa", explanation: "感謝を具体的に伝えると、もっと気持ちが伝わるよ。" },
+            { question: "「元気出して」と励ます", answer: "fuwafuwa", explanation: "落ち込んでいる時に、元気づけてくれると嬉しいね。" },
+            // チクチク言葉
             { question: "まちがえた友だちに「なんでできないの？」", answer: "chikuchiku", explanation: "相手をせめる言葉は、悲しい気持ちにさせるよ。" },
             { question: "「そんな服へんだよ」と見た目をわるく言う", answer: "chikuchiku", explanation: "人が気にしていることを言うのは、相手を傷つけるよ。" },
             { question: "「あっちいって！」と仲間はずれにする", answer: "chikuchiku", explanation: "ひとりぼっちにされると、とてもさみしい気持ちになるね。" },
             { question: "友だちのものをだまってとる", answer: "chikuchiku", explanation: "言葉じゃなくても、行動で相手を悲しませることもあるよ。" },
             { question: "ないしょ話を「みんなに言っちゃお！」", answer: "chikuchiku", explanation: "信じてくれた友だちを裏切る、とても悲しい言葉だね。" },
-            { question: "「ごめんね」ときちんとあやまる", answer: "fuwafuwa", explanation: "あやまるのは勇気がいるけど、相手を思う大切な言葉だよ。" }
+            { question: "友だちが話しているのに、わざと聞かない（無視する）", answer: "chikuchiku", explanation: "無視されるのは、自分がいないみたいでとてもつらいよ。" },
+            { question: "「どうせムリだよ」と、やる気をなくさせることを言う", answer: "chikuchiku", explanation: "挑戦する前からあきらめさせるのは、相手の可能性をつぶしてしまうよ。" },
+            { question: "友だちの失敗を、みんなの前で笑いものにする", answer: "chikuchiku", explanation: "恥ずかしい気持ちにさせて、相手を深く傷つけてしまうね。" },
+            { question: "「おまえのせいだ」と、人のせいにする", answer: "chikuchiku", explanation: "責任をおしつけられると、つらくて苦しい気持ちになるよ。" },
+            { question: "「うざい」「きもい」など、相手がイヤな気持ちになる言葉を使う", answer: "chikuchiku", explanation: "相手の人格を否定するような言葉は、絶対に使ってはいけないね。" },
+            { question: "かげで悪口を言う", answer: "chikuchiku", explanation: "いないところで悪口を言うのは、とても卑怯で、信頼をなくす行為だよ。" },
+            { question: "「そんなことも知らないの？」と、ばかにする", answer: "chikuchiku", explanation: "知らないことをばかにされると、質問するのが怖くなってしまうね。" },
+            { question: "いやがっているのに、しつこくからかう", answer: "chikuchiku", explanation: "自分はふざけているつもりでも、相手にとっては「いじめ」になることがあるよ。" },
+            { question: "「だからお前はダメなんだ」と決めつける", answer: "chikuchiku", explanation: "相手の全てを否定するような言葉は、深く心を傷つけるよ。" },
+            { question: "わざと大きな音をたてて、おどろかす", answer: "chikuchiku", explanation: "相手を怖がらせたり、いやな気持ちにさせたりする行動もチクチクだよ。" }
         ];
-
+        
+        const QUESTIONS_PER_GAME = 7; // 1回のゲームの問題数
         let currentQuizIndex = 0; // 今何問目か
         let score = 0; // 正解の数
-        let shuffledQuizzes = []; // シャッフルされたクイズ
+        let shuffledQuizzes = []; // シャッフルされて選ばれたクイズ
 
         // --- 関数の定義 ---
 
         // クイズを始める準備をする関数
         function initGame() {
-            // 問題をランダムな順番にします
-            shuffledQuizzes = [...quizzes].sort(() => Math.random() - 0.5);
+            // 全問題からランダムに7問選ぶ
+            const allQuizzes = [...quizzes].sort(() => Math.random() - 0.5);
+            shuffledQuizzes = allQuizzes.slice(0, QUESTIONS_PER_GAME);
+            
             currentQuizIndex = 0;
             score = 0;
+            
             displayQuiz();
+            
             nextBtn.innerText = 'つぎのもんだいへ';
             nextBtn.classList.add('hidden');
             resultExplanation.innerText = '';
@@ -128,7 +159,7 @@
         function displayQuiz() {
             // 結果表示をリセット
             resultMessage.innerText = '';
-            resultMessage.classList.remove('result-anim', 'text-pink-500', 'text-blue-500');
+            resultMessage.classList.remove('result-anim', 'text-pink-400', 'text-blue-500');
             resultExplanation.innerText = '';
             
             // 問題文と進捗を更新
@@ -136,9 +167,12 @@
             questionText.innerText = currentQuiz.question;
             progressText.innerText = `もんだい ${currentQuizIndex + 1} / ${shuffledQuizzes.length}`;
             
-            // ボタンを押せるようにする
-            fuwafuwaBtn.disabled = false;
-            chikuchikuBtn.disabled = false;
+            // ボタンを押せるようにし、スタイルをリセット
+            [fuwafuwaBtn, chikuchikuBtn].forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('selected-btn');
+                btn.style.opacity = '1';
+            });
             
             // 「次へ」ボタンを隠す
             nextBtn.classList.add('hidden');
@@ -150,18 +184,24 @@
             fuwafuwaBtn.disabled = true;
             chikuchikuBtn.disabled = true;
 
+            // 選択したボタンをハイライト
+            const selectedBtn = selectedType === 'fuwafuwa' ? fuwafuwaBtn : chikuchikuBtn;
+            const otherBtn = selectedType === 'fuwafuwa' ? chikuchikuBtn : fuwafuwaBtn;
+            selectedBtn.classList.add('selected-btn');
+            otherBtn.style.opacity = '0.5';
+
             const currentQuiz = shuffledQuizzes[currentQuizIndex];
 
             // 正解かどうかを判定
             if (selectedType === currentQuiz.answer) {
                 // 正解の処理
                 resultMessage.innerText = 'せいかい！';
-                resultMessage.className = 'result-anim text-pink-500 font-bold';
+                resultMessage.className = 'result-anim text-pink-400 font-extrabold text-7xl';
                 score++;
             } else {
                 // 不正解の処理
                 resultMessage.innerText = 'ざんねん…';
-                resultMessage.className = 'result-anim text-blue-500 font-bold';
+                resultMessage.className = 'result-anim text-blue-500 font-extrabold text-7xl';
             }
             
             // 解説を表示
@@ -195,6 +235,8 @@
             // ボタン類を非表示に
             fuwafuwaBtn.disabled = true;
             chikuchikuBtn.disabled = true;
+            fuwafuwaBtn.style.opacity = '0.5';
+            chikuchikuBtn.style.opacity = '0.5';
             resultMessage.innerText = '🎉';
             resultMessage.classList.add('result-anim');
             
