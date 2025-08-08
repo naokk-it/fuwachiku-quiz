@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ふわふわ言葉？チクチク言葉？クイズ</title>
+    <!-- Tailwind CSSを読み込みます -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fontsから、丸みのある可愛らしいフォントを読み込みます -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* 読み込んだフォントを全体に適用します */
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            -webkit-tap-highlight-color: transparent; /* スマホでタップしたときの色を消します */
+        }
+        /* ボタンが押せるときのスタイル */
+        .choice-btn:not(:disabled) {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        /* ボタンにマウスが乗ったときのスタイル */
+        .choice-btn:not(:disabled):hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* 正解・不正解のアニメーション */
+        @keyframes result-animation {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .result-anim {
+            animation: result-animation 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-sky-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- クイズ全体のコンテナ -->
+    <div id="quiz-container" class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-6 md:p-10 text-center relative overflow-hidden">
+        
+        <!-- ヘッダー部分 -->
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-600">ふわふわ？チクチク？ことばクイズ</h1>
+            <p id="progress-text" class="text-gray-500 mt-2 text-lg">もんんだい 1 / 10</p>
+        </header>
+
+        <!-- 問題文を表示するエリア -->
+        <div class="bg-sky-50 border-2 border-sky-200 rounded-lg p-6 mb-8 min-h-[120px] flex items-center justify-center">
+            <p id="question-text" class="text-xl md:text-2xl font-bold text-gray-800"></p>
+        </div>
+
+        <!-- 選択肢ボタン -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
+            <button id="fuwafuwa-btn" data-type="fuwafuwa" class="choice-btn w-full bg-pink-300 text-white py-6 rounded-xl shadow-lg text-2xl font-bold focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                ☁️ ふわふわ言葉
+            </button>
+            <button id="chikuchiku-btn" data-type="chikuchiku" class="choice-btn w-full bg-gray-500 text-white py-6 rounded-xl shadow-lg text-2xl font-bold focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                🌵 チクチク言葉
+            </button>
+        </div>
+
+        <!-- 結果表示エリア -->
+        <div id="result-area" class="min-h-[80px] flex items-center justify-center">
+            <p id="result-message" class="text-5xl font-bold"></p>
+            <p id="result-explanation" class="text-gray-600 mt-2"></p>
+        </div>
+
+        <!-- 次へ進む/もう一度ボタン -->
+        <div class="mt-4">
+            <button id="next-btn" class="hidden w-full md:w-auto bg-amber-400 hover:bg-amber-500 text-white font-bold py-3 px-12 rounded-full shadow-md transition-transform transform hover:scale-105">
+                つぎのもんだいへ
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- ここからJavaScript ---
+
+        // HTMLの要素をプログラムで使えるように、変数に入れます
+        const questionText = document.getElementById('question-text');
+        const fuwafuwaBtn = document.getElementById('fuwafuwa-btn');
+        const chikuchikuBtn = document.getElementById('chikuchiku-btn');
+        const resultMessage = document.getElementById('result-message');
+        const resultExplanation = document.getElementById('result-explanation');
+        const nextBtn = document.getElementById('next-btn');
+        const progressText = document.getElementById('progress-text');
+        const quizContainer = document.getElementById('quiz-container');
+
+        // クイズの問題と答えのリスト
+        // 新しい問題を追加したいときは、このリストに足していくだけでOK！
+        const quizzes = [
+            { question: "ころんでしまった友だちに「だいじょうぶ？」", answer: "fuwafuwa", explanation: "心配する気持ちが伝わる、やさしい言葉だね。" },
+            { question: "絵をじょうずに描けたね！とほめる", answer: "fuwafuwa", explanation: "ほめられると、うれしい気持ちになるね！" },
+            { question: "「ありがとう」と感謝をつたえる", answer: "fuwafuwa", explanation: "感謝の気持ちは、相手を温かい気持ちにさせるよ。" },
+            { question: "「いっしょにあそぼう！」とさそう", answer: "fuwafuwa", explanation: "仲間に入れてもらえると、楽しい気持ちになるね。" },
+            { question: "まちがえた友だちに「なんでできないの？」", answer: "chikuchiku", explanation: "相手をせめる言葉は、悲しい気持ちにさせるよ。" },
+            { question: "「そんな服へんだよ」と見た目をわるく言う", answer: "chikuchiku", explanation: "人が気にしていることを言うのは、相手を傷つけるよ。" },
+            { question: "「あっちいって！」と仲間はずれにする", answer: "chikuchiku", explanation: "ひとりぼっちにされると、とてもさみしい気持ちになるね。" },
+            { question: "友だちのものをだまってとる", answer: "chikuchiku", explanation: "言葉じゃなくても、行動で相手を悲しませることもあるよ。" },
+            { question: "ないしょ話を「みんなに言っちゃお！」", answer: "chikuchiku", explanation: "信じてくれた友だちを裏切る、とても悲しい言葉だね。" },
+            { question: "「ごめんね」ときちんとあやまる", answer: "fuwafuwa", explanation: "あやまるのは勇気がいるけど、相手を思う大切な言葉だよ。" }
+        ];
+
+        let currentQuizIndex = 0; // 今何問目か
+        let score = 0; // 正解の数
+        let shuffledQuizzes = []; // シャッフルされたクイズ
+
+        // --- 関数の定義 ---
+
+        // クイズを始める準備をする関数
+        function initGame() {
+            // 問題をランダムな順番にします
+            shuffledQuizzes = [...quizzes].sort(() => Math.random() - 0.5);
+            currentQuizIndex = 0;
+            score = 0;
+            displayQuiz();
+            nextBtn.innerText = 'つぎのもんだいへ';
+            nextBtn.classList.add('hidden');
+            resultExplanation.innerText = '';
+        }
+
+        // 問題を表示する関数
+        function displayQuiz() {
+            // 結果表示をリセット
+            resultMessage.innerText = '';
+            resultMessage.classList.remove('result-anim', 'text-pink-500', 'text-blue-500');
+            resultExplanation.innerText = '';
+            
+            // 問題文と進捗を更新
+            const currentQuiz = shuffledQuizzes[currentQuizIndex];
+            questionText.innerText = currentQuiz.question;
+            progressText.innerText = `もんだい ${currentQuizIndex + 1} / ${shuffledQuizzes.length}`;
+            
+            // ボタンを押せるようにする
+            fuwafuwaBtn.disabled = false;
+            chikuchikuBtn.disabled = false;
+            
+            // 「次へ」ボタンを隠す
+            nextBtn.classList.add('hidden');
+        }
+
+        // 答えをチェックする関数
+        function checkAnswer(selectedType) {
+            // ボタンを二度押しできないようにする
+            fuwafuwaBtn.disabled = true;
+            chikuchikuBtn.disabled = true;
+
+            const currentQuiz = shuffledQuizzes[currentQuizIndex];
+
+            // 正解かどうかを判定
+            if (selectedType === currentQuiz.answer) {
+                // 正解の処理
+                resultMessage.innerText = 'せいかい！';
+                resultMessage.className = 'result-anim text-pink-500 font-bold';
+                score++;
+            } else {
+                // 不正解の処理
+                resultMessage.innerText = 'ざんねん…';
+                resultMessage.className = 'result-anim text-blue-500 font-bold';
+            }
+            
+            // 解説を表示
+            resultExplanation.innerText = currentQuiz.explanation;
+
+            // 次の問題があるかチェック
+            if (currentQuizIndex < shuffledQuizzes.length - 1) {
+                nextBtn.innerText = 'つぎのもんだいへ';
+            } else {
+                nextBtn.innerText = 'けっかを見る';
+            }
+            // 「次へ」ボタンを表示
+            nextBtn.classList.remove('hidden');
+        }
+
+        // 最終結果を表示する関数
+        function showFinalResult() {
+            progressText.innerText = `けっか発表！`;
+            questionText.innerHTML = `あなたは ${shuffledQuizzes.length} 問中 <span class="text-4xl text-amber-500">${score}</span> 問せいかい！`;
+            
+            let finalMessage = '';
+            if (score === shuffledQuizzes.length) {
+                finalMessage = 'すごい！全問正解！あなたは「ふわふわ言葉」の達人だね！';
+            } else if (score >= shuffledQuizzes.length * 0.7) {
+                finalMessage = 'おしい！たくさんの「ふわふわ言葉」を知っているね！';
+            } else {
+                finalMessage = 'これからも、相手がうれしくなる言葉をたくさん見つけていこう！';
+            }
+            resultExplanation.innerText = finalMessage;
+
+            // ボタン類を非表示に
+            fuwafuwaBtn.disabled = true;
+            chikuchikuBtn.disabled = true;
+            resultMessage.innerText = '🎉';
+            resultMessage.classList.add('result-anim');
+            
+            // ボタンを「もういちど」に変更
+            nextBtn.innerText = 'もういちどチャレンジ！';
+            nextBtn.classList.remove('hidden');
+        }
+
+
+        // --- イベントリスナーの設定 ---
+
+        // ふわふわボタンが押されたとき
+        fuwafuwaBtn.addEventListener('click', () => {
+            checkAnswer('fuwafuwa');
+        });
+
+        // チクチクボタンが押されたとき
+        chikuchikuBtn.addEventListener('click', () => {
+            checkAnswer('chikuchiku');
+        });
+
+        // 次へ/もう一度ボタンが押されたとき
+        nextBtn.addEventListener('click', () => {
+            if (nextBtn.innerText === 'もういちどチャレンジ！') {
+                // ゲームをリセット
+                initGame();
+            } else {
+                 // 次の問題へ
+                currentQuizIndex++;
+                if (currentQuizIndex < shuffledQuizzes.length) {
+                    displayQuiz();
+                } else {
+                    showFinalResult();
+                }
+            }
+        });
+
+        // ページが読み込まれたら、ゲームを開始します
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
